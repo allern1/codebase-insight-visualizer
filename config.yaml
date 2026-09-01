@@ -1,0 +1,32 @@
+# Codebase Insight Visualizer 用户配置
+# 语法：YAML 兼容的 JSON（注释行以 # 开头；parser 剥离注释后用 json.loads 解析，零依赖）
+# 用法：python scripts/scanner.py --project <path> --config config.yaml
+
+{
+  "ignore_extra": [
+    "docs/",
+    "*.md",
+    "*.txt"
+  ],
+
+  "cache": {
+    "dir": null,                    # null = 默认 ~/.cache/project_viz/<root-hash>；也可给绝对路径
+    "keep_snapshots": 30,           # 时间机器快照轮转保留数
+    "max_snapshot_bytes": 20971520  # 单快照上限 20MB
+  },
+
+  "privacy_mode": "strict",         # strict：AI 请求仅发送函数签名+注释，绝不发送函数体；off：完整代码
+  "local_llm_endpoint": "",         # 例如 http://localhost:11434/v1（Ollama）；留空 = 使用编排器默认模型
+
+  "ai": {
+    "time_window_min": 120          # is_ai_generated 三重判定：时间窗（分钟）
+  },
+
+  "ide": {
+    "protocol": "vscode"            # vscode | idea | webstorm；不支持时 dashboard 自动降级复制坐标
+  },
+
+  "bundle": {
+    "inline_echarts": false         # true 时 build.py --bundle 将 ECharts 内联（内网/离线交付）
+  }
+}

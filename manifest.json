@@ -1,0 +1,28 @@
+{
+  "name": "codebase-insight-visualizer",
+  "version": "0.1.0",
+  "description": "Codebase Insight Visualizer — 将死代码转化为活知识：确定性事实底座 + AI 语义便签 + 离线三栏文档式交互 dashboard（金色=AI 代码 / 灰色=已删除存档 / 决策故事 / 运行流程高亮）。",
+  "license": "MIT",
+  "entry": {
+    "instructions": "instructions.md",
+    "pipeline": [
+      { "step": "scan", "command": "python scripts/scanner.py --project <path> --config config.yaml" },
+      { "step": "enrich", "command": "将 fact_graph.json 交给 LLM，遵循 instructions.md 输出 AI JSON" },
+      { "step": "stitch", "command": "python scripts/manifest_builder.py --fact-graph <fg.json> --ai-output <ai.json> --out final_manifest.json" },
+      { "step": "build", "command": "python scripts/build.py --manifest final_manifest.json --out dashboard.html [--echarts echarts.min.js]" }
+    ]
+  },
+  "runtime": {
+    "language": "python",
+    "dependencies": [],
+    "requirement": "Python 3.11+（标准库；配置解析使用 YAML 兼容 JSON，零外部依赖）"
+  },
+  "privacy": {
+    "default_mode": "strict",
+    "note": "strict 模式下发送给 LLM 的内容仅含函数签名与注释，不含函数体"
+  },
+  "outputs": {
+    "dashboard": "单文件 HTML（零框架；ECharts 默认 CDN，--echarts 可内联）",
+    "data_contract": "schemas/final_manifest.schema.json"
+  }
+}

@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codebase Insight · 三栏文档式 Dashboard（原型）</title>
+<style>
+:root{
+  --bg:#ffffff; --bg-soft:#f8fafc; --bg-hover:#f1f5f9; --border:#e5e7eb;
+  --text:#1f2328; --muted:#6b7280; --faint:#9ca3af;
+  --accent:#2456f0; --accent-soft:#eef2ff; --accent-border:#c7d2fe;
+  --gold:#d97706; --gold-soft:#fef3c7;
+  --green:#059669; --red:#dc2626; --amber:#b45309;
+  --radius:8px; --shadow:0 1px 3px rgba(0,0,0,.06);
+}
+html.dark{
+  --bg:#0f1115; --bg-soft:#161a20; --bg-hover:#1d222a; --border:#2a303a;
+  --text:#e5e7eb; --muted:#9aa3b2; --faint:#6b7280;
+  --accent:#6d8dff; --accent-soft:#1b233a; --accent-border:#33415f;
+  --gold:#fbbf24; --gold-soft:#3a2c10;
+  --green:#34d399; --red:#f87171; --amber:#fbbf24;
+  --shadow:0 1px 3px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--bg); color:var(--text); font-size:14px; line-height:1.65;
+  display:flex; flex-direction:column; height:100vh; overflow:hidden;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ---------- 顶栏 ---------- */
+.topbar{
+  height:56px; flex:0 0 56px; display:flex; align-items:center; gap:22px;
+  padding:0 22px; border-bottom:1px solid var(--border); background:var(--bg);
+  position:relative; z-index:30;
+}
+.timebar{
+  flex:0 0 auto; display:flex; align-items:center; gap:12px; padding:8px 22px;
+  border-bottom:1px solid var(--border); background:var(--bg-soft); font-size:13px;
+}
+.timebar .tb-label{font-weight:700;color:var(--accent);white-space:nowrap}
+.timebar select{
+  font:inherit;font-size:12.5px;color:var(--text);background:var(--bg);
+  border:1px solid var(--border);border-radius:8px;padding:4px 8px;outline:none;max-width:280px;
+}
+.timebar .tb-stats{color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.tb-chip{font-size:12px;padding:1px 8px;border-radius:10px;border:1px solid var(--border);white-space:nowrap}
+.tb-chip.add{color:var(--green);border-color:var(--green)}
+.tb-chip.rem{color:var(--red);border-color:var(--red)}
+.tb-chip.mov{color:var(--amber);border-color:var(--amber)}
+.tb-chip.upd{color:var(--accent);border-color:var(--accent-border)}
+.tree-item.diff-add{color:var(--green)}
+.tree-item.diff-mov{color:var(--amber)}
+.tree-item.diff-upd{color:var(--accent)}
+.tree-item .dlabel{font-size:10px;font-weight:700;margin-left:2px}
+#snapExit{margin-left:auto}
+.logo{font-size:17px;font-weight:800;color:var(--accent);letter-spacing:-.2px;white-space:nowrap}
+.topnav{display:flex;gap:4px;flex:1;min-width:0}
+.topnav button{
+  padding:6px 12px;border-radius:var(--radius);color:var(--muted);font-weight:500;white-space:nowrap;
+}
+.topnav button:hover{background:var(--bg-hover);color:var(--text)}
+.topnav button.active{color:var(--accent);background:var(--accent-soft)}
+.topbar-right{display:flex;align-items:center;gap:6px;margin-left:auto}
+.iconbtn{
+  width:34px;height:34px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:16px;flex:0 0 auto;
+}
+.iconbtn:hover{background:var(--bg-hover);color:var(--text)}
+.searchwrap{display:flex;align-items:center;gap:8px}
+.searchbox{
+  width:0;opacity:0;transition:width .2s ease,opacity .2s;border:1px solid var(--border);
+  background:var(--bg-soft);color:var(--text);border-radius:var(--radius);padding:6px 10px;outline:none;
+}
+.searchbox.open{width:200px;opacity:1}
+.menu-btn{display:none}
+
+/* ---------- 三栏骨架 ---------- */
+.shell{flex:1;display:flex;min-height:0}
+.sidebar{
+  flex:0 0 300px;width:300px;border-right:1px solid var(--border);background:var(--bg);
+  overflow-y:auto;padding:14px 10px 80px;
+}
+.toc-pane{
+  flex:0 0 240px;width:240px;border-left:1px solid var(--border);background:var(--bg);
+  overflow-y:auto;padding:18px 16px 80px;
+}
+.main{flex:1;min-width:0;overflow-y:auto;background:var(--bg)}
+.content-wrap{max-width:820px;margin:0 auto;padding:34px 44px 140px}
+
+/* ---------- 左侧模块树 ---------- */
+.stats-chip{
+  display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);
+  margin:6px 4px 14px;flex-wrap:wrap;
+}
+.stats-chip b{color:var(--text)}
+.tree-title{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.3px;padding:4px 8px;margin-top:4px;
+  display:flex;align-items:center;justify-content:space-between;gap:6px}
+.legend-chips{display:flex;gap:4px;font-weight:400}
+.legend-chip{
+  display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);
+  border:1px solid var(--border);border-radius:10px;padding:1px 7px;white-space:nowrap;letter-spacing:0;
+}
+.legend-chip i{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 auto}
+.legend-chip.on{color:var(--text)}
+.legend-chip.on:hover{background:var(--bg-hover)}
+.legend-chip.off{opacity:.35}
+.tree-group{transition:opacity .2s}
+.tree-group-head{
+  width:100%;display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:var(--radius);
+  color:var(--text);font-weight:600;font-size:13.5px;text-align:left;
+}
+.tree-group-head:hover{background:var(--bg-hover)}
+.tree-group-head .count{
+  margin-left:auto;font-size:11px;font-weight:600;color:var(--muted);background:var(--bg-soft);
+  border:1px solid var(--border);border-radius:10px;padding:1px 7px;
+}
+.tree-group-head .arrow{font-size:10px;color:var(--faint);transition:transform .15s}
+.tree-group.collapsed .arrow{transform:rotate(-90deg)}
+.tree-group.collapsed .tree-items{display:none}
+.tree-item{
+  width:100%;display:flex;align-items:center;gap:5px;padding:6px 10px 6px 26px;border-radius:var(--radius);
+  color:var(--muted);font-size:13px;text-align:left;
+}
+.tree-item:hover{background:var(--bg-hover);color:var(--text)}
+.tree-item.active{color:var(--accent);background:var(--accent-soft);font-weight:600;position:relative}
+.tree-item.active:before{
+  content:"";position:absolute;left:-10px;top:5px;bottom:5px;width:3px;border-radius:2px;background:var(--accent);
+}
+.tree-item .st{margin-left:auto;font-size:11px;flex:0 0 auto}
+.st-ai{color:var(--gold)}
+.st-del{color:var(--red)}
+.st-mov{color:var(--amber)}
+.tree-item.deleted{color:var(--faint);text-decoration:line-through;text-decoration-style:dashed}
+.tree-item.faded{opacity:.32}
+.tree-emptynote{padding:8px 10px;color:var(--faint);font-size:12px}
+
+/* ---------- 中间内容区 ---------- */
+.crumb{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px;flex-wrap:wrap}
+.crumb .sep{color:var(--faint)}
+.crumb .date{color:var(--faint)}
+.doc-title{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:14px 0 4px}
+.doc-sub{color:var(--muted);font-size:14.5px;margin:0 0 18px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:26px}
+.chip{
+  font-size:12.5px;padding:4px 12px;border-radius:16px;border:1px solid var(--border);
+  color:var(--muted);background:var(--bg);white-space:nowrap;
+}
+.chip.accent{border-color:var(--accent-border);color:var(--accent);background:var(--accent-soft);font-weight:600}
+.chip.gold{border-color:var(--gold);color:var(--gold);background:var(--gold-soft);font-weight:600}
+.chip.red{border-color:var(--red);color:var(--red)}
+.card{
+  border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);
+  padding:20px 22px;margin-bottom:18px;box-shadow:var(--shadow);
+}
+.card h3{margin:0 0 10px;font-size:15.5px;display:flex;align-items:center;gap:8px}
+.card h3 .ico{font-size:16px}
+.card p{margin:0 0 8px;color:var(--text)}
+.card p:last-child{margin-bottom:0}
+.alt-list,.risk-list{margin:0;padding-left:18px;color:var(--text)}
+.alt-list li,.risk-list li{margin-bottom:6px}
+.risk-list li::marker{color:var(--red)}
+.codeblock{
+  background:var(--bg-soft);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 16px;font-family:"Cascadia Code",Consolas,"SF Mono",Menlo,monospace;font-size:12.5px;
+  color:var(--text);overflow-x:auto;white-space:pre;margin:0;line-height:1.6;
+}
+.code-meta{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.code-meta .path{font-family:Consolas,monospace;font-size:12.5px;color:var(--muted)}
+.code-meta .jump{
+  font-size:12px;color:var(--accent);border:1px solid var(--accent-border);border-radius:var(--radius);
+  padding:3px 10px;background:var(--accent-soft);
+}
+.code-meta .jump:hover{text-decoration:none;filter:brightness(.96)}
+.story-line{
+  display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--border);
+}
+.story-line:last-child{border-bottom:none}
+.story-line .dot{margin-top:5px;flex:0 0 auto}
+.story-line b{font-size:13px}
+.story-line .meta{color:var(--muted);font-size:12px;margin-top:2px}
+.badge-src{
+  display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--gold);
+  border:1px solid var(--gold);border-radius:10px;padding:1px 8px;background:var(--gold-soft);
+}
+.section-note{color:var(--muted);font-size:13px}
+.dimmed{color:var(--muted)}
+
+/* ---------- 右侧节点速览 ---------- */
+.toc-title{
+  font-size:12.5px;font-weight:800;letter-spacing:.5px;display:flex;align-items:center;gap:6px;
+  color:var(--accent);margin:2px 0 14px;text-transform:uppercase;
+}
+.toc-sec{margin-bottom:22px}
+.toc-sec h4{margin:0 0 8px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px}
+.toc-sec ul{margin:0;padding:0;list-style:none}
+.toc-sec li{font-size:12.5px;color:var(--muted);margin-bottom:6px;display:flex;gap:6px;align-items:baseline}
+.toc-sec li a{color:var(--muted)}
+.toc-sec li a:hover{color:var(--accent);text-decoration:none}
+.rel-type{font-size:10px;color:var(--faint);border:1px solid var(--border);border-radius:8px;padding:0 5px;flex:0 0 auto}
+.soul-mini{
+  border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-soft);
+  padding:12px 14px;font-size:12.5px;color:var(--text);margin-top:8px;
+}
+.soul-mini .q{color:var(--muted);display:block;margin:6px 0 4px}
+.soul-mini .label{font-size:11px;color:var(--faint);display:flex;align-items:center;gap:5px}
+
+/* ---------- 全景图视图 ---------- */
+.graph-view{display:none;height:100%;flex:1;position:relative}
+body.mode-graph .main{display:none}
+body.mode-graph .graph-view{display:block}
+#graph{width:100%;height:100%}
+.flow-bar{
+  position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:5;
+  display:flex;align-items:center;gap:10px;padding:8px 14px;
+  background:var(--bg);border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 2px 12px rgba(0,0,0,.08);max-width:calc(100% - 40px);
+}
+.flow-bar .fb-label{font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap}
+.flow-bar select{
+  font:inherit;font-size:12.5px;color:var(--text);background:var(--bg-soft);
+  border:1px solid var(--border);border-radius:8px;padding:5px 8px;outline:none;max-width:240px;
+}
+.fb-btn{
+  font-size:12px;padding:5px 12px;border-radius:8px;border:1px solid var(--border);
+  color:var(--muted);background:var(--bg);white-space:nowrap;
+}
+.fb-btn:hover:not(:disabled){background:var(--bg-hover);color:var(--text)}
+.fb-btn:disabled{opacity:.4;cursor:not-allowed}
+.fb-hint{font-size:11.5px;color:var(--muted);line-height:1.4;display:none;max-width:340px}
+.fb-hint.show{display:block}
+.graph-error{
+  display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;
+  color:var(--muted);font-size:13.5px;padding:30px;
+}
+.graph-error .box{border:1px solid var(--border);border-radius:var(--radius);padding:24px 28px;background:var(--bg-soft)}
+
+/* ---------- 符号索引 ---------- */
+.symlist{display:flex;flex-direction:column;gap:4px}
+.sym-row{
+  display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:var(--radius);
+  font-size:12.5px;color:var(--text);text-align:left;border:1px solid var(--border);
+}
+.sym-row:hover{background:var(--bg-hover);border-color:var(--accent-border)}
+.sym-row code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px}
+.sym-row .sym-line{color:var(--faint);font-size:11px;flex:0 0 auto}
+.sym-row .sym-go{margin-left:auto;color:var(--accent);font-size:11px;flex:0 0 auto}
+
+/* ---------- 灵魂拷问浮窗 ---------- */
+.soul-float{
+  position:fixed;left:24px;bottom:20px;z-index:40;max-width:330px;
+  background:var(--bg);border:1px solid var(--border);border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.10);
+  padding:12px 42px 12px 16px;display:none;animation:fadein .3s;
+}
+.soul-float.show{display:block}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.soul-float .label{font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.4px;margin-bottom:4px}
+.soul-float .q{font-size:13px;color:var(--text);margin:0}
+.soul-float .close{position:absolute;right:8px;top:8px;color:var(--faint);font-size:14px;padding:2px 6px}
+.soul-float .close:hover{color:var(--text)}
+
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:var(--faint)}
+
+@media (max-width:1180px){.toc-pane{display:none}}
+@media (max-width:900px){
+  .sidebar{position:fixed;left:0;top:56px;bottom:0;transform:translateX(-100%);transition:transform .22s;box-shadow:0 8px 30px rgba(0,0,0,.15);z-index:25}
+  body.sidebar-open .sidebar{transform:none}
+  .menu-btn{display:flex}
+  .topnav{display:none}
+  .content-wrap{padding:26px 20px 120px}
+}
+</style>
+</head>
+<body data-theme="light">
+
+<header class="topbar">
+  <button class="iconbtn menu-btn" id="menuBtn" title="目录">☰</button>
+  <div class="logo">🔬 Codebase Insight</div>
+  <nav class="topnav">
+    <button id="navDoc" class="active" onclick="switchMode('doc')">📄 认知导航</button>
+    <button id="navGraph" onclick="switchMode('graph')">🕸 全景图谱</button>
+    <button id="navTime" onclick="toggleTimeBar()">🕘 时间机器</button>
+  </nav>
+  <div class="topbar-right">
+    <div class="searchwrap">
+      <input id="searchBox" class="searchbox" placeholder="Ctrl+K 搜索模块…" oninput="applyFilter(this.value)">
+      <button class="iconbtn" onclick="focusSearch()" title="搜索 (Ctrl+K)">🔍</button>
+    </div>
+    <button class="iconbtn" id="themeBtn" onclick="toggleTheme()" title="切换主题">🌙</button>
+  </div>
+</header>
+
+<div class="timebar" id="timeBar" style="display:none">
+  <span class="tb-label">🕘 时间机器</span>
+  <select id="snapSelect" onchange="selectSnapshot(this.value)">
+    <option value="">当前状态（无对比）</option>
+  </select>
+  <span class="tb-stats" id="snapStats"></span>
+  <button class="fb-btn" id="snapExit" onclick="exitTimeMachine()">✕ 回到当前</button>
+</div>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="stats-chip" id="statsChip"></div>
+    <div class="tree-title">📚 项目模块树
+      <span class="legend-chips" title="点击过滤：AI 聚焦 / 已删除 / 移动">
+        <button class="legend-chip on" id="leg-ai" onclick="toggleLegend('ai')"><i style="background:var(--gold)"></i>AI</button>
+        <button class="legend-chip on" id="leg-del" onclick="toggleLegend('del')"><i style="background:var(--faint)"></i>已删</button>
+        <button class="legend-chip on" id="leg-mov" onclick="toggleLegend('mov')"><i style="background:var(--amber)"></i>移动</button>
+      </span>
+    </div>
+    <div id="tree"></div>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="content-wrap" id="content"></div>
+  </main>
+
+  <aside class="toc-pane">
+    <div class="toc-title">◈ 节点速览</div>
+    <div id="toc"></div>
+  </aside>
+
+  <section class="graph-view">
+    <div class="flow-bar" id="flowBar">
+      <span class="fb-label">▶ 运行流程</span>
+      <select id="flowSelect" onchange="enterFlow(this.value)">
+        <option value="">— 选择流程，点亮执行链路 —</option>
+      </select>
+      <button class="fb-btn" id="flowPlay" onclick="playFlow()" disabled>▶ 播放</button>
+      <button class="fb-btn" id="flowExit" onclick="exitFlow()" style="display:none">✕ 退出</button>
+      <span class="fb-hint" id="flowHint"></span>
+    </div>
+    <div id="graph"></div>
+    <div class="graph-error" id="graphError">
+      <div class="box">
+        <div style="font-size:26px;margin-bottom:8px">🕸</div>
+        <div style="font-weight:700;margin-bottom:6px">ECharts 未能加载</div>
+        <div>当前处于内网/离线环境时，请运行 <code>python build.py --bundle</code> 将 ECharts 压缩版内联进 HTML（对应 V2.0 内联策略）。<br>点击右上「📄 认知导航」可继续使用文档视图。</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="soul-float" id="soulFloat">
+  <div class="label">💬 灵魂拷问</div>
+  <p class="q" id="soulQ"></p>
+  <button class="close" onclick="this.parentElement.classList.remove('show')">✕</button>
+</div>
+
+<script>
+/* ===== 示例数据：真实运行时由 manifest_builder.py 注入 ===== */
+window.__MANIFEST__ = {
+  project_name: "电商平台",
+  generated_at: "2026-08-31T12:00:00Z",
+  stats: { total_nodes: 9, ai_contributed_nodes: 4 },
+  nodes: [
+    {
+      id: "api_gateway", name: "API 网关", type: "service",
+      file_path: "gateway/api_gateway.py", start_line: 12, is_ai_generated: false,
+      tech_stack: "FastAPI + Nginx", status: "active",
+      summary: "统一入口：路由、鉴权、限流。",
+      design_reason: "采用统一网关做入口收敛：JWT 校验与限流在边界处理，内部服务不再重复实现鉴权，避免安全口径不一致。",
+      alternatives: ["曾考虑 Mesh 网关（Istio），但当前团队运维能力不足，先以 Nginx + 应用层网关起步。"],
+      known_risks: ["网关成为单点，目前只有 1 个实例，无自动扩缩容。"],
+      code_snippet: "@app.post(\"/api/order\")\ndef create_order(req: OrderReq):\n    auth = verify_jwt(req.token)      # 边界鉴权\n    return order_svc.create(req)      # 转发到订单服务"
+    },
+    {
+      id: "order_service", name: "订单处理服务", type: "service",
+      file_path: "services/order/handler.py", start_line: 45, is_ai_generated: true,
+      tech_stack: "Go + Gin", status: "active",
+      summary: "订单创建/状态机核心。",
+      design_reason: "采用事件驱动架构保证最终一致性：下单后立即返回，落库 + 发消息异步推进状态机，替代了传统的 2PC（两阶段提交），因为老系统不支持分布式事务。",
+      alternatives: ["曾考虑引入 RabbitMQ，但运维成本高、需要额外集群，最终使用既有 Kafka 基建。"],
+      known_risks: ["当用户服务超时时，订单状态可能卡在\"待确认\"，缺乏兜底重试机制。"],
+      code_snippet: "func (s *OrderSvc) Create(ctx, req) (*Order, error) {\n    o := buildOrder(req)\n    s.db.Save(o)                // 先落库\n    s.kafka.Publish(ORDER_CREATED, o)  // 再发事件，最终一致\n    return o, nil\n}",
+      ai_evidence: ["Git 状态：新增文件", "时间窗：近 2 小时内修改", "用户确认：已勾选"],
+      story: [
+        { t: "AI 新写入", d: "2026-08-31 11:42", note: "新增 handler.go，采用事件驱动替代 2PC；旧版 payments 模块同步废弃。" }
+      ]
+    },
+    {
+      id: "order_processor", name: "订单异步处理器", type: "service",
+      file_path: "services/order/processor.py", start_line: 8, is_ai_generated: true,
+      tech_stack: "Python + Kafka", status: "active",
+      summary: "消费订单事件，推进状态机。",
+      design_reason: "把耗时操作（库存预扣、风控校验）从同步链路拆到消费端，下单接口 P99 从 180ms 降到 42ms。",
+      alternatives: ["备选：Celery 队列 —— 已用于报表任务，但无重试语义，不适合订单这类强一致需求。"],
+      known_risks: ["消费端与主服务共用数据库连接池，高峰可能挤占主链路连接。"],
+      code_snippet: "def on_order_created(evt):\n    with db.pool() as conn:        # ⚠ 与 handler 共用连接池\n        reserve_stock(conn, evt)\n        conn.commit()"
+    },
+    {
+      id: "user_auth", name: "用户鉴权服务", type: "service",
+      file_path: "services/auth/user_auth.py", start_line: 30, is_ai_generated: false,
+      tech_stack: "Python + Redis", status: "active",
+      summary: "JWT 签发与校验，用户会话。",
+      design_reason: "采用无状态 JWT + Redis 黑名单：横向扩容不需要会话共享，登出通过黑名单 30 分钟 TTL 生效。",
+      alternatives: [],
+      known_risks: ["JWT 无法主动失效，黑名单 TTL 期间泄露的 token 仍可用。"],
+      code_snippet: "def verify(token):\n    claims = jwt.decode(token, SECRET)\n    if redis.exists(f\"bl:{token}\"): raise AuthError()"
+    },
+    {
+      id: "kafka_client", name: "Kafka 客户端封装", type: "utils",
+      file_path: "infra/kafka_client.py", start_line: 3, is_ai_generated: true,
+      tech_stack: "confluent-kafka", status: "active",
+      summary: "统一生产/消费接口 + 重试。",
+      design_reason: "封装统一的 kafka 客户端：重试、幂等 producer、死信队列统一处理，业务层不直接依赖 kafka 配置细节。",
+      alternatives: ["备选：直接调用 confluent-kafka —— 导致业务代码散落配置，已否决。"],
+      known_risks: ["重试策略目前是固定 3 次，未做退避；对瞬时故障可能导致消息重复投递。"],
+      code_snippet: "class KafkaClient:\n    def publish(self, topic, key, msg):\n        self.producer.produce(topic, key=key, value=msg, on_delivery=retry)\n        self.producer.poll(0)"
+    },
+    {
+      id: "db_pool", name: "数据库连接池", type: "utils",
+      file_path: "infra/db_pool.py", start_line: 5, is_ai_generated: false,
+      tech_stack: "SQLAlchemy + PgBouncer", status: "active",
+      summary: "连接池管理与事务边界。",
+      design_reason: "通过 PgBouncer 连接池复用，避免每请求新建连接；事务边界封装在 context manager，防止事务泄漏。",
+      alternatives: [],
+      known_risks: ["连接池上限 20，多个服务共享时无法区分配额。"],
+      code_snippet: "@contextmanager\ndef pool():\n    conn = engine.connect()\n    try:\n        yield conn\n        conn.commit()\n    except:\n        conn.rollback(); raise"
+    },
+    {
+      id: "app_config", name: "配置中心", type: "config",
+      file_path: "config/app_config.py", start_line: 1, is_ai_generated: false,
+      tech_stack: "pydantic-settings", status: "active",
+      summary: "环境配置集中管理。",
+      design_reason: "使用 pydantic-settings 强类型配置，启动时校验必填项，避免运行时缺配置产生难排查的异常。",
+      alternatives: ["备选：.env 直接散读 —— 无类型校验，已否决。"],
+      known_risks: ["敏感变量（数据库密码）仍以明文写在部署配置里。"],
+      code_snippet: "class Settings(BaseSettings):\n    db_url: str\n    kafka_brokers: list[str]\n    model_config = SettingsConfigDict(env_file=\".env\")"
+    },
+    {
+      id: "billing_engine", name: "计费引擎", type: "service",
+      file_path: "services/billing/engine.py", start_line: 22, is_ai_generated: false,
+      tech_stack: "Python + Celery", status: "moved",
+      summary: "账单计算。原位于 services/pay/billing_engine.py。",
+      design_reason: "计费与支付解耦：从支付子域迁出为独立计费域，按天聚合出账，避免支付接口慢查询拖累计费任务。",
+      alternatives: ["曾考虑保留在支付域 —— 但权限划分不清，已迁移。"],
+      known_risks: ["迁移后旧路径的 import 仍残留在 legacy 脚本中。"],
+      code_snippet: "def daily_bill(date):\n    return aggregate(orders.filter(billed=False))",
+      story: [
+        { t: "Rename (git)", d: "2026-08-29 17:05", note: "git 检测到文件重命名 services/pay/ → services/billing/，内容指纹相似度 87%，保留原决策故事。" }
+      ]
+    },
+    {
+      id: "payment_gateway_legacy", name: "支付网关（旧版）", type: "service",
+      file_path: "services/payment/legacy.py", start_line: 10, is_ai_generated: true,
+      tech_stack: "Python 2.7", status: "deleted",
+      summary: "已废弃：被事件驱动的订单链路替代。",
+      design_reason: "原 2PC 同步支付方案无法支撑最终一致性需求，随本次订单服务重构整体废弃。",
+      alternatives: [],
+      known_risks: ["线上仍有个别定时任务引用旧模块，需在下次发版前清理。"],
+      code_snippet: null,
+      story: [
+        { t: "Deleted", d: "2026-08-31 11:40", note: "文件物理删除，保留节点作为历史存档（灰色虚线）。参考：事件驱动替代 2PC 决策。" }
+      ]
+    }
+  ],
+  edges: [
+    { source: "api_gateway", target: "order_service", relation: "HTTP 调用", factual: true },
+    { source: "api_gateway", target: "user_auth", relation: "HTTP 调用", factual: true },
+    { source: "order_service", target: "user_auth", relation: "RPC 调用", factual: true },
+    { source: "order_service", target: "kafka_client", relation: "消息生产", factual: true },
+    { source: "order_service", target: "db_pool", relation: "DB 调用", factual: true },
+    { source: "order_processor", target: "db_pool", relation: "DB 调用", factual: true },
+    { source: "order_processor", target: "kafka_client", relation: "消息消费", factual: true },
+    { source: "billing_engine", target: "order_service", relation: "RPC 调用", factual: true },
+    { source: "payment_gateway_legacy", target: "db_pool", relation: "DB 调用（已失效）", factual: true }
+  ],
+  soul_questions: [
+    "如果订单服务挂了，Kafka 积压的数据如何恢复？",
+    "2PC 被替换后，跨服务扣款失败时的对账由谁负责？",
+    "计费引擎迁移后，旧路径的 import 什么时候能清理干净？"
+  ],
+  flows: [
+    {
+      id: "order_creation", name: "订单创建流程", entry: "api_gateway",
+      steps: [
+        { node: "api_gateway", action: "边界 JWT 鉴权 + 路由", order: 1 },
+        { node: "order_service", action: "落库 + 发布订单事件", order: 2 },
+        { node: "kafka_client", action: "消息发布（幂等 producer）", order: 3 },
+        { node: "order_processor", action: "消费事件，推进状态机", order: 4 }
+      ],
+      gap_hint: "步骤 3→4 为异步消息接缝，非直接调用；步骤 2→3 由事实边 order_service→kafka_client 背书。"
+    },
+    {
+      id: "auth_flow", name: "鉴权链路", entry: "api_gateway",
+      steps: [
+        { node: "api_gateway", action: "边界拦截，校验 JWT 头", order: 1 },
+        { node: "user_auth", action: "签名验证 + Redis 黑名单检查", order: 2 }
+      ],
+      gap_hint: ""
+    },
+    {
+      id: "billing_flow", name: "计费出账流程", entry: "billing_engine",
+      steps: [
+        { node: "billing_engine", action: "聚合当日订单", order: 1 },
+        { node: "order_service", action: "读取订单状态与金额", order: 2 }
+      ],
+      gap_hint: "由事实边 billing_engine→order_service（RPC 调用）背书。"
+    }
+  ]
+};
+</script>
+
+<!-- build.py --bundle 时替换为内联脚本；此处 integrity 值在打包脚本中生成 -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"
+        onerror="document.getElementById('graphError').style.display='flex'"></script>
+
+<script>
+/* ================= Dashboard 渲染逻辑（无框架，纯 JS） ================= */
+const M = window.__MANIFEST__;
+const $ = s => document.querySelector(s);
+const nodeMap = Object.fromEntries(M.nodes.map(n => [n.id, n]));
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtDate = iso => (iso||"").replace("T"," ").replace(/:00Z$/, "");
+
+let selectedId = M.nodes.find(n => n.status === "active")?.id ?? M.nodes[0].id;
+const TYPE_ICON = { service:"⚙️", entity:"📦", utils:"🧰", config:"⚙️" };
+
+/* ---------- 顶栏统计 ---------- */
+function renderStats(){
+  const ai = M.stats.ai_contributed_nodes, total = M.stats.total_nodes;
+  $("#statsChip").innerHTML =
+    `<span>📈 总模块 <b>${total}</b></span>` +
+    `<span>🔥 AI 占比 <b>${Math.round(ai/total*100)}%</b></span>` +
+    `<span title="生成时间">🕒 ${fmtDate(M.generated_at)}</span>`;
+}
+
+/* ---------- 左侧模块树 ---------- */
+function groupNodes(){
+  const g = {};
+  for (const n of M.nodes){
+    const key = n.file_path.includes("/") ? n.file_path.split("/")[0] : "(根目录)";
+    (g[key] ??= []).push(n);
+  }
+  return g;
+}
+/* ---------- 标记图例过滤（全量 ↔ AI 聚焦 / 显示 ↔ 隐藏） ---------- */
+const legendState = { ai: true, del: true, mov: true };
+function toggleLegend(k){
+  legendState[k] = !legendState[k];
+  const el = $("#leg-" + k);
+  el.classList.toggle("on", legendState[k]);
+  el.classList.toggle("off", !legendState[k]);
+  renderTree($("#searchBox").value);
+  updateGraph();   // 全景图同步过滤（已删除/移动节点连带边一起隐藏）
+}
+
+function renderTree(filter=""){
+  const groups = groupNodes();
+  const f = filter.trim().toLowerCase();
+  let html = "";
+  for (const [dir, items] of Object.entries(groups)){
+    const visible = items.filter(n =>
+      (!f || n.name.toLowerCase().includes(f) || n.id.toLowerCase().includes(f)) &&
+      !(n.status === "deleted" && !legendState.del) &&
+      !(n.status === "moved" && !legendState.mov)
+    );
+    if (!visible.length) continue;
+    html += `<div class="tree-group" id="grp-${esc(dir)}">
+      <button class="tree-group-head" onclick="toggleGroup(this)">
+        <span class="arrow">▼</span>📂 ${esc(dir)}
+        <span class="count">${visible.length}</span>
+      </button>
+      <div class="tree-items">` +
+      visible.map(n => {
+        const st = n.status === "deleted" ? `<span class="st st-del">🗑</span>`
+          : n.status === "moved" ? `<span class="st st-mov">↪</span>`
+          : n.is_ai_generated ? `<span class="st st-ai">🔥</span>` : "";
+        const ncls = n.status === "deleted" ? "tree-item deleted" : "tree-item";
+        const faded = (legendState.ai && !n.is_ai_generated && n.status === "active") ? " faded" : "";
+        const [dcls, dlabel] = diffLabel(n.file_path);
+        const dtag = dlabel ? `<span class="dlabel">${dlabel}</span>` : "";
+        return `<button class="${ncls}${faded}${dcls ? " " + dcls : ""} ${n.id===selectedId?"active":""}" onclick="selectNode('${n.id}')">
+          ${TYPE_ICON[n.type]||"📄"} ${esc(n.name)}${st}${dtag}</button>`;
+      }).join("") + `</div></div>`;
+  }
+  $("#tree").innerHTML = html || `<div class="tree-emptynote">无匹配模块。</div>`;
+}
+function toggleGroup(btn){ btn.parentElement.classList.toggle("collapsed"); }
+function applyFilter(v){ renderTree(v); }
+function focusSearch(){
+  const s=$("#searchBox"); s.classList.add("open"); s.focus();
+  if(!s.value) return; s.select();
+}
+
+/* ---------- 中间详情 ---------- */
+function renderDetail(){
+  const n = nodeMap[selectedId];
+  if (!n) return;
+  const chips = [
+    `<span class="chip accent">${esc(n.tech_stack)}</span>`,
+    `<span class="chip">${esc(n.type)}</span>`,
+    n.is_ai_generated ? `<span class="chip gold">🔥 AI 生成</span>` : "",
+    n.status === "deleted" ? `<span class="chip red">🗑 已删除</span>`
+      : n.status === "moved" ? `<span class="chip red">↪ 已移动</span>` : ""
+  ].join("");
+  const code = n.code_snippet
+    ? `<div class="card"><h3><span class="ico">💻</span>代码预览</h3>
+       <div class="code-meta"><span class="path">${esc(n.file_path)}:${n.start_line}</span>
+       <button class="jump" onclick="jumpToIde()">→ 在 IDE 中打开</button>
+       <button class="jump" onclick="copyCoord()">复制 文件:行号</button></div>
+       <pre class="codeblock">${esc(n.code_snippet)}</pre></div>`
+    : `<div class="card"><h3><span class="ico">💻</span>代码预览</h3><p class="section-note">该节点已删除，代码不可预览（历史快照可恢复）。</p></div>`;
+  const story = (n.story||[]).length ? `<div class="card"><h3><span class="ico">📖</span>决策故事</h3>` +
+    n.story.map(s=>`<div class="story-line"><span class="dot">${s.t.includes("AI")?"🤖":"🛠"}</span>
+      <div><b>${esc(s.t)}</b><div class="meta">${esc(s.d)}</div>${esc(note(s))}</div></div>`).join("") +
+    (n.is_ai_generated ? `<div style="margin-top:10px"><span class="badge-src">🛡 判定依据：${esc((n.ai_evidence||[]).join(" · "))}</span></div>` : "") +
+    `</div>` : "";
+  const syms = Array.isArray(n.symbols) ? n.symbols : [];
+  const symCard = syms.length ? `<div class="card"><h3><span class="ico">🔍</span>符号索引</h3>
+    <div class="symlist">${syms.slice(0, 40).map(s => {
+      const name = typeof s === "string" ? s : (s.name || "?");
+      const line = typeof s === "string" ? 1 : (s.line || 1);
+      return `<button class="sym-row" onclick="jumpToLine(${line})" title="在 IDE 中打开 ${esc(n.file_path)}:${line}">
+        <code>${esc(name)}</code><span class="sym-line">L${line}</span><span class="sym-go">→ 打开</span></button>`;
+    }).join("")}</div></div>` : "";
+  $("#content").innerHTML = `
+    <div class="crumb"><a onclick="selectNode('${selectedId}')">${esc(M.project_name)}</a>
+      <span class="sep">›</span><span>${esc(n.file_path)}</span>
+      <span class="sep">›</span><span class="date">${fmtDate(M.generated_at)}</span></div>
+    <h1 class="doc-title">${esc(n.name)}</h1>
+    <p class="doc-sub">${esc(n.summary||"")}</p>
+    <div class="chips">${chips}</div>
+    <div class="card"><h3><span class="ico">📐</span>设计权衡</h3>
+      <p>${esc(n.design_reason||"（AI 未补充语义，仅展示事实骨架）")}</p></div>
+    <div class="card"><h3><span class="ico">🗂</span>备选方案</h3>
+      ${ (n.alternatives||[]).length ? `<ul class="alt-list">${n.alternatives.map(a=>`<li>${esc(a)}</li>`).join("")}</ul>`
+        : `<p class="section-note">无记录 —— 该模块为存量代码，AI 本轮未标注备选方案。</p>` }</div>
+    <div class="card"><h3><span class="ico">⚠️</span>已知风险</h3>
+      ${ (n.known_risks||[]).length ? `<ul class="risk-list">${n.known_risks.map(r=>`<li>${esc(r)}</li>`).join("")}</ul>`
+        : `<p class="section-note">未发现显著风险。</p>` }</div>
+    ${code}${symCard}${story}`;
+  renderToc(n);
+  renderGraphHighlight();
+  highlightTree();
+}
+function note(s){ return typeof s === "string" ? s : s.note || ""; }
+
+/* ---------- 右侧节点速览 ---------- */
+function renderToc(n){
+  const deps = M.edges.filter(e=>e.source===n.id),
+        used = M.edges.filter(e=>e.target===n.id && e.source!==n.id);
+  const li = (id, rel) => nodeMap[id] ? `<li><span class="rel-type">${esc(rel)}</span>
+      <a onclick="selectNode('${id}')">${esc(nodeMap[id].name)}</a></li>` : "";
+  const q = M.soul_questions[(M.nodes.indexOf(n)+1) % M.soul_questions.length];
+  $("#toc").innerHTML = `
+    <div class="toc-sec"><h4>⬇ Depends on</h4><ul>${deps.map(e=>li(e.target,e.relation)).join("")||`<li style="color:var(--faint)">无</li>`}</ul></div>
+    <div class="toc-sec"><h4>⬆ Used by</h4><ul>${used.map(e=>li(e.source,e.relation)).join("")||`<li style="color:var(--faint)">无</li>`}</ul></div>
+    <div class="toc-sec"><h4>💬 相关灵魂拷问</h4>
+      <div class="soul-mini"><span class="label">💭 主动思考</span><span class="q">“${esc(q)}”</span></div></div>`;
+}
+function highlightTree(){
+  document.querySelectorAll(".tree-item").forEach(el=>el.classList.toggle("active", el.textContent.includes(nodeMap[selectedId]?.name||"")));
+  [...$("#tree").querySelectorAll(".tree-item")].forEach(el=>{
+    el.classList.toggle("active", el.getAttribute("onclick")?.includes(`'${selectedId}'`));
+  });
+}
+function selectNode(id){ selectedId = id; renderDetail(); closeSidebar(); }
+
+/* ---------- 全景视图（ECharts 力导向） ---------- */
+let chart = null;
+function renderGraphHighlight(){
+  if (!chart) return;
+  const idx = M.nodes.findIndex(n => n.id === selectedId);
+  chart.dispatchAction({ type: "downplay", seriesIndex: 0 });
+  if (idx >= 0) chart.dispatchAction({ type: "highlight", seriesIndex: 0, dataIndex: idx });
+}
+/* 数据构建：跟随 legendState 过滤（与左侧模块树联动）；flowMode 非空时切换为流程高亮模式 */
+let flowMode = null, flowTimer = null;
+function activeFlow(){ return M.flows.find(f => f.id === flowMode) || null; }
+function buildGraphData(){
+  const vis = M.nodes.filter(n =>
+    !(n.status === "deleted" && !legendState.del) &&
+    !(n.status === "moved" && !legendState.mov)
+  );
+  const ids = new Set(vis.map(n => n.id));
+  const flow = activeFlow();
+  const inFlow = flow ? new Set(flow.steps.map(s => s.node)) : null;
+  const orderMap = flow ? Object.fromEntries(flow.steps.map(s => [s.node, s.order])) : null;
+  const nodes = vis.map(n => ({
+    id: n.id, name: n.name,
+    symbolSize: n.type==="service"?46:n.type==="config"?28:34,
+    itemStyle:{
+      color: n.status==="deleted" ? "#9ca3af"
+           : n.is_ai_generated ? "#fbbf24" : "#2456f0",
+      borderColor: n.status==="deleted" ? "#9ca3af"
+           : diffMode && diffSet.has(n.id) ? ({
+               "diff-add": "#059669", "diff-mov": "#b45309", "diff-upd": "#2456f0"
+             }[diffLabel(n.id)[0]] || "#1d4ed8")
+           : n.is_ai_generated ? "#d97706" : "#1d4ed8",
+      borderWidth: (diffMode && diffSet.has(n.id)) ? 3.5 : (n.is_ai_generated ? 3 : 1.5),
+      shadowBlur: n.is_ai_generated ? 12 : 0,
+      shadowColor: "rgba(217,119,6,.35)",
+      opacity: inFlow ? (inFlow.has(n.id) ? 1 : .12)
+             : (diffMode && diffSet.size && !diffSet.has(n.id) ? .3
+                : (n.status==="deleted" ? .55 : 1))
+    },
+    label:{
+      show:true, fontSize:11,
+      formatter: inFlow ? (inFlow.has(n.id) ? orderMap[n.id]+". "+n.name : n.name) : n.name
+    }
+  }));
+  const linkStyle = e => {
+    if (inFlow){
+      const inA = inFlow.has(e.source), inB = inFlow.has(e.target);
+      const oa = orderMap[e.source], ob = orderMap[e.target];
+      if (inA && inB && oa && ob && ob === oa + 1) return { color:"#2456f0", width:2.6, opacity:.95 };
+      if (inA && inB) return { opacity:.25 };
+      return { opacity:.08 };
+    }
+    if (nodeMap[e.source]?.status==="deleted" || nodeMap[e.target]?.status==="deleted")
+      return { type:"dashed", opacity:.4, color:"#9ca3af" };
+    return undefined;
+  };
+  const links = M.edges
+    .filter(e => ids.has(e.source) && ids.has(e.target))
+    .map(e => ({ source: e.source, target: e.target, lineStyle: linkStyle(e) }));
+  return { nodes, links };
+}
+function renderGraph(){
+  if (typeof echarts === "undefined"){ $("#graphError").style.display="flex"; return; }
+  if (!chart){
+    chart = echarts.init($("#graph"));
+    chart.setOption({
+      tooltip:{ formatter: p => {
+        if (p.dataType==="edge") return "";
+        const n = nodeMap[p.data.id] || p.data;
+        const flow = activeFlow();
+        const step = flow && flow.steps.find(s => s.node === n.id);
+        const act = step ? `<br>▶ ${step.order}. ${esc(step.action)}` : "";
+        return `<b>${esc(n.name)}</b><br>${esc(n.file_path)}:${n.start_line}<br>${n.is_ai_generated?"🔥 AI 生成":""}${act}`;
+      }},
+      series:[{
+        type:"graph", layout:"force", roam:true, draggable:true,
+        force:{ repulsion:260, edgeLength:[90,160], gravity:0.08 },
+        emphasis:{ focus:"adjacency" },
+        lineStyle:{ color:"#94a3b8", width:1.2, curveness:0.18, opacity:.75 },
+        edgeSymbol:["none","arrow"], edgeSymbolSize:6,
+        data:[], links:[]
+      }]
+    });
+    chart.on("click", p => { if (p.dataType==="node" && nodeMap[p.data.id]){ selectNode(p.data.id); switchMode("doc"); } });
+    window.addEventListener("resize", ()=>chart.resize());
+  }
+  updateGraph();
+  /* 容器的 display:none → block 切换后必须重算尺寸，否则第二次进入时画布为 0 宽高 */
+  requestAnimationFrame(() => { if (chart) chart.resize(); });
+}
+function updateGraph(){
+  if (!chart || typeof echarts === "undefined") return;
+  const { nodes, links } = buildGraphData();
+  chart.setOption({ series: [{ data: nodes, links }] });
+}
+
+/* ---------- 运行流程模式 ---------- */
+function enterFlow(id){
+  flowMode = id || null;
+  clearInterval(flowTimer);
+  const flow = activeFlow();
+  $("#flowPlay").disabled = !flow;
+  $("#flowExit").style.display = flow ? "" : "none";
+  const h = $("#flowHint");
+  if (flow){
+    const entry = nodeMap[flow.entry] ? nodeMap[flow.entry].name : flow.entry;
+    h.textContent = `入口：${entry} · ${flow.steps.length} 步` + (flow.gap_hint ? ` · ⚠ ${flow.gap_hint}` : "");
+    h.classList.add("show");
+  } else {
+    h.classList.remove("show");
+  }
+  if (chart) { chart.dispatchAction({ type: "downplay", seriesIndex: 0 }); }
+  updateGraph();
+}
+function exitFlow(){ if ($("#flowSelect")) $("#flowSelect").value = ""; enterFlow(""); }
+function playFlow(){
+  const flow = activeFlow();
+  if (!flow || !chart) return;
+  clearInterval(flowTimer);
+  chart.dispatchAction({ type: "downplay", seriesIndex: 0 });
+  let i = 0;
+  flowTimer = setInterval(() => {
+    chart.dispatchAction({ type: "downplay", seriesIndex: 0 });
+    if (i >= flow.steps.length){ clearInterval(flowTimer); return; }
+    const idx = M.nodes.findIndex(n => n.id === flow.steps[i].node);
+    if (idx >= 0) chart.dispatchAction({ type: "highlight", seriesIndex: 0, dataIndex: idx });
+    i++;
+  }, 750);
+}
+function renderFlowOptions(){
+  $("#flowSelect").innerHTML = '<option value="">— 选择流程，点亮执行链路 —</option>' +
+    M.flows.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join("");
+}
+
+/* ---------- 时间机器（快照 diff 视图） ---------- */
+const SNAPS = window.__SNAPSHOTS__ || [];
+let diffMode = null, diffSet = new Set();
+function renderSnapOptions(){
+  const sel = $("#snapSelect");
+  if (!SNAPS.length){
+    sel.innerHTML = '<option value="">暂无历史快照（运行 scanner 后自动生成）</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">当前状态（无对比）</option>' +
+    SNAPS.slice().reverse().map(s =>
+      `<option value="${s.id}">${fmtDate(s.at)}（+${s.stats.added}/-${s.stats.removed}/↔${s.stats.moved}/~${s.stats.updated}）</option>`
+    ).join("");
+}
+function toggleTimeBar(){
+  const bar = $("#timeBar");
+  const show = bar.style.display === "none";
+  bar.style.display = show ? "flex" : "none";
+  $("#navTime").classList.toggle("active", show);
+  if (show) renderSnapOptions();
+  else exitTimeMachine();
+}
+function selectSnapshot(id){
+  diffMode = id || null;
+  const s = SNAPS.find(x => x.id === diffMode) || null;
+  diffSet = new Set([...(s?.added||[]), ...(s?.moved||[]), ...(s?.updated||[])]);
+  $("#snapStats").innerHTML = s
+    ? `<span class="tb-chip add">+${s.stats.added} 新增</span>` +
+      `<span class="tb-chip rem">-${s.stats.removed} 删除</span>` +
+      `<span class="tb-chip mov">↔${s.stats.moved} 移动</span>` +
+      `<span class="tb-chip upd">~${s.stats.updated} 修改</span>`
+    : "";
+  renderTree($("#searchBox").value);
+  updateGraph();
+}
+function exitTimeMachine(){
+  selectSnapshot("");
+  $("#timeBar").style.display = "none";
+  $("#navTime").classList.remove("active");
+}
+function diffLabel(fp){
+  if (!diffMode) return "";
+  const s = SNAPS.find(x => x.id === diffMode);
+  if (!s) return "";
+  if (s.added.includes(fp)) return ["diff-add", "新"];
+  if (s.moved.includes(fp)) return ["diff-mov", "↔"];
+  if (s.updated.includes(fp)) return ["diff-upd", "改"];
+  return "";
+}
+function switchMode(mode){
+  document.body.classList.toggle("mode-graph", mode==="graph");
+  $("#navDoc").classList.toggle("active", mode==="doc");
+  $("#navGraph").classList.toggle("active", mode==="graph");
+  if (mode==="graph") renderGraph();
+  else if (chart) chart.resize();
+}
+function closeSidebar(){ document.body.classList.remove("sidebar-open"); }
+$("#menuBtn").onclick = ()=>document.body.classList.toggle("sidebar-open");
+document.querySelector("#sidebar").addEventListener("click", e=>{ if(window.innerWidth<=900 && !e.target.closest(".tree-group-head")) closeSidebar(); });
+
+/* ---------- 主题 ---------- */
+function toggleTheme(){
+  const dark = document.documentElement.classList.toggle("dark");
+  localStorage.setItem("cbviz-theme", dark?"dark":"light");
+  $("#themeBtn").textContent = dark ? "☀️" : "🌙";
+  if (chart) { chart.dispose(); chart = null; }
+}
+if (localStorage.getItem("cbviz-theme")==="dark"){
+  document.documentElement.classList.add("dark"); $("#themeBtn").textContent="☀️";
+}
+
+/* ---------- 灵魂拷问轮播（30s） ---------- */
+let qi = 0;
+function showSoul(){
+  const el = $("#soulFloat");
+  $("#soulQ").textContent = M.soul_questions[qi % M.soul_questions.length];
+  el.classList.add("show");
+}
+setInterval(showSoul, 30000);
+setTimeout(showSoul, 1200);
+
+/* ---------- IDE 跳转 / 剪贴板 ---------- */
+function jumpToLine(line){
+  const n = nodeMap[selectedId];
+  const abs = (window.__PROJECT_ROOT__ || "") + "/" + n.file_path;  // 构建期由 build.py 注入真实项目根
+  const uri = `vscode://file/${abs}:${line}`;
+  try { window.open(uri, "_self"); } catch(e){ copyCoord(); }
+}
+function jumpToIde(){
+  if (nodeMap[selectedId]) jumpToLine(nodeMap[selectedId].start_line || 1);
+}
+function copyCoord(){
+  const n = nodeMap[selectedId];
+  navigator.clipboard?.writeText(`${n.file_path}:${n.start_line}`).then(
+    ()=>toast("已复制坐标："+n.file_path+":"+n.start_line),
+    ()=>toast("复制失败，请手动复制 "+n.file_path+":"+n.start_line)
+  );
+}
+let toastTimer=null;
+function toast(msg){
+  let t=$("#toast");
+  if (!t){ t=document.createElement("div"); t.id="toast";
+    t.style.cssText="position:fixed;bottom:24px;right:24px;z-index:99;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.2)";
+    document.body.appendChild(t); }
+  t.textContent=msg; t.style.display="block";
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.style.display="none", 2600);
+}
+
+/* ---------- 快捷键 ---------- */
+document.addEventListener("keydown", e=>{
+  if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="k"){ e.preventDefault(); focusSearch(); }
+  if (e.key==="Escape"){ closeSidebar(); $("#searchBox").classList.remove("open"); }
+});
+
+/* ---------- 启动 ---------- */
+renderStats(); renderTree(); renderDetail();
+if (Array.isArray(M.flows) && M.flows.length) renderFlowOptions();
+</script>
+</body>
+</html>

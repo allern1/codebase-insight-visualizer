@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 工具产物（构建生成，不入库）
+demo/dashboard_real.html
+*.tmp
+
+# 本地缓存/配置
+.cache/
+.project_viz/
