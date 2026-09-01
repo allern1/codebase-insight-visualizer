@@ -153,7 +153,9 @@ def resolve_python(rel_path: str, spec: str, paths: set[str], stems: dict[str, l
         target = target.lstrip("./")
     else:
         target = "/".join(parts)
-    for cand in (target + ".py", target + ".pyi", target + "/__init__.py"):
+    # 精确候选：常规路径 + src 布局变体（src/<pkg>/...，import 用包名不带 src 前缀）
+    for cand in (target + ".py", target + ".pyi", target + "/__init__.py",
+                 "src/" + target + ".py", "src/" + target + "/__init__.py"):
         if cand in paths:
             return cand
     if stems:  # 兜底：模块名 → 任意目录下的同名文件

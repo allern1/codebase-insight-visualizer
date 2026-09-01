@@ -124,6 +124,24 @@ class TestScannerSmoke(unittest.TestCase):
         self.assertNotIn(".env", paths)
         self.assertEqual(g["stats"]["total_nodes"], 9)
 
+    def test_src_layout_import_resolution(self):
+        """回归：src 布局项目（import pkg.x 但文件在 src/pkg/x.py）+ 同名 stem 不误连。"""
+        import tempfile
+        import scanner
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "src" / "pkg").mkdir(parents=True)
+            (root / "src" / "pkg" / "utils.py").write_text("def helper(): pass\n", encoding="utf-8")
+            (root / "src" / "pkg" / "mod.py").write_text("import pkg.utils\ndef run(): pass\n", encoding="utf-8")
+            (root / "tools").mkdir()
+            (root / "tools" / "utils.py").write_text("OTHER = 1\n", encoding="utf-8")
+            g = scanner.scan(root, root / ".cache", no_cache=False, include_hidden=False)["graph"]
+            edges = {(e["source"], e["target"]) for e in g["edges"]}
+            self.assertIn(("src/pkg/mod.py", "src/pkg/utils.py"), edges,
+                          "import pkg.utils 应连到 src/pkg/utils.py")
+            self.assertFalse(any(t.endswith("tools/utils.py") for _, t in edges),
+                             "同名 stem 不得误连 tools/utils.py")
+
 
 class TestScannerCLI(unittest.TestCase):
     """CLI 冒烟：subprocess 完整链路（exit 0 + 增量第二跑）。"""
