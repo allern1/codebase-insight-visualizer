@@ -102,6 +102,28 @@ codebase-insight-visualizer/
 └── tests/                     # 26 unittest cases (zero dependencies)
 ```
 
+## Install as a Skill (Claude Code / Codex CLI)
+
+The repo-root `SKILL.md` follows the standard **Agent Skills** format (frontmatter `name`/`description` + portable relative-path instructions); the runtime (`scripts/` + `schemas/` + `instructions.md` + `config.yaml`) ships alongside it. Zero-dependency Python 3.11+.
+
+**Option 1 — skills CLI (recommended)**
+
+```bash
+# Claude Code (global)
+npx skills add allern1/codebase-insight-visualizer --agent claude-code --global
+# Codex CLI
+npx skills add allern1/codebase-insight-visualizer --agent codex --global
+```
+
+**Option 2 — manual copy** (place this repo in the host's skills dir; keep `SKILL.md` siblings with `scripts/`)
+
+```
+~/.claude/skills/codebase-insight-visualizer/   # Claude Code
+~/.codex/skills/codebase-insight-visualizer/    # Codex CLI
+```
+
+After install, ask the agent to "analyze this repo's structure / dependencies / runtime flow" or "see what code the AI changed recently" — it executes the four-step pipeline (full scan first run; incremental on later runs, ~95% token reduction); for intranet/offline delivery add `--echarts echarts.min.js`.
+
 ## Tests
 
 ```bash

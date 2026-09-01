@@ -89,6 +89,28 @@ codebase-insight-visualizer/
 └── tests/                     # 26 项 unittest（零依赖）
 ```
 
+## 作为 Skill 安装（Claude Code / Codex CLI）
+
+本仓库根目录的 `SKILL.md` 是标准 **Agent Skills** 格式（frontmatter `name`/`description` + 可移植相对路径指令），运行时（`scripts/` + `schemas/` + `instructions.md` + `config.yaml`）与它同目录打包，零依赖 Python 3.11+。
+
+**方式一：skills CLI（推荐）**
+
+```bash
+# Claude Code（全局）
+npx skills add allern1/codebase-insight-visualizer --agent claude-code --global
+# Codex CLI
+npx skills add allern1/codebase-insight-visualizer --agent codex --global
+```
+
+**方式二：手动复制**（把本仓库内容放入宿主的 skills 目录，保持 SKILL.md 与 scripts/ 同级）
+
+```
+~/.claude/skills/codebase-insight-visualizer/   # Claude Code
+~/.codex/skills/codebase-insight-visualizer/    # Codex CLI
+```
+
+安装后，向 agent 说"分析当前项目结构/依赖/运行流程"或"看看最近 AI 改动的代码"，即会按 SKILL.md 的四步流水线执行（首次全量，二次增量 Token 降 95%）；内网/离线环境构建时加 `--echarts echarts.min.js` 内联。
+
 ## 测试
 
 ```bash
