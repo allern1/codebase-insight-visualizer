@@ -10,6 +10,15 @@ every claim navigates to its real source coordinates in your IDE.
 
 > 简体中文版见 [README.md](./README.md)
 
+## 预览（真实产物截图）
+
+| 认知导航（三栏文档式） | 全景图谱（流程高亮） |
+|---|---|
+| ![认知导航视图](docs/assets/dashboard-doc-view.png) | ![全景图谱视图](docs/assets/dashboard-graph-view.png) |
+
+- **认知导航**：左侧模块树（🔥=AI 生成 / 🗑=已删除存档 / ↪=移动）、中间节点详情（设计权衡 / 备选方案 / 已知风险 / 代码预览 / 符号索引）、右侧 Depends on / Used by 速览。
+- **全景图谱**：ECharts 力导向图，金色=AI 生成、灰色=已删除（虚线边）；「▶ 运行流程」选择后链路节点按执行顺序点亮，其余淡化。
+
 ## Core philosophy
 
 ```
