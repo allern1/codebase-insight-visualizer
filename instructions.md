@@ -101,6 +101,14 @@
 3. `unchanged` 节点：**原样保留旧语义，不得重写**；
 4. **接缝分析**：对 updated/moved 节点，检查其事实边变化（边增删 = 重路由），在 `story` 中记录"对接缝的兼容性风险"。
 
+## 6.5 AI 文件归属（is_ai_generated 判定）
+
+执行本流程的 AI 助手**必须**在调用 `manifest_builder.py` 时传入 `--ai-files`，值为**本会话自身创建/修改**的文件相对路径列表（逗号分隔）：判定信号中的"用户确认"即来自此处。不传则判定渠道只剩 git 状态 + 时间窗，已提交的 AI 代码将无法归因（漏标）。
+
+**第 4 证据通道（agent_evidence，默认开启）**：`manifest_builder.py` 自动扫描宿主会话日志（Reasonix archive / Codex sessions / Claude Code projects，config.yaml 的 `agent_evidence.hosts` 配置），提取 Agent 自动写入的文件作为"AI 会话记录"证据，与 git 状态/时间窗/用户确认并列，满足其二规则不变。
+
+**已知局限（生态共识）**：日志通道只统计 Agent 自动写文件；复制粘贴（AI 输出、手动粘贴）无法捕获——只能靠 `--ai-files` 补充；活跃会话尚未归档时同样不可见，此时 `--ai-files` 是唯一会话内信号。
+
 ## 7. 输出契约（必须严格遵守）
 
 - 输出**一个合法 JSON 对象**（无 markdown 代码块包裹，无注释，无尾逗号）；

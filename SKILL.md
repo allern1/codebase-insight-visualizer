@@ -38,10 +38,11 @@ SKILL_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"   # if run from a she
    ```bash
    python "$SKILL_ROOT/scripts/manifest_builder.py" \
      --fact-graph <fact_graph.json> --ai-output <ai.json> \
-     --out <final_manifest.json> [--old-manifest <previous>] [--ai-files <paths>]
+     --out <final_manifest.json> [--old-manifest <previous>] \
+     --ai-files <files created/modified by THIS AI session, comma-separated>
    ```
 
-   Invented nodes / unbaked edges are dropped and reported. Any validation failure preserves the previous artifact and exits non-zero.
+   **`--ai-files` is mandatory when an AI session produced the code being analyzed** — the executing agent knows exactly which files it wrote/changed; without it, committed AI code cannot be attributed (the triple-rule judge then only sees an mtime hint). Invented nodes / unbaked edges are dropped and reported. Any validation failure preserves the previous artifact and exits non-zero.
 
 4. **Build the deliverable**:
 

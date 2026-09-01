@@ -137,8 +137,12 @@ def is_binary(path: Path) -> bool:
         return True
 
 
-def resolve_python(rel_path: str, spec: str, paths: set[str]) -> str | None:
-    """解析 Python import spec → 仓库内相对路径；相对导入按目录解析。"""
+def resolve_python(rel_path: str, spec: str, paths: set[str], stems: dict[str, list[str]] | None = None) -> str | None:
+    """解析 Python import spec → 仓库内相对路径；相对导入按目录解析。
+
+    stems 兜底：模块名不带包前缀的扁平项目（如 scripts/ 下 from fingerprint import ...），
+    按 spec 最后段匹配文件 stem（V1 局限：同名不同目录时取首个，README 已声明）。
+    """
     base_dir = rel_path.rsplit("/", 1)[0] if "/" in rel_path else ""
     parts = spec.split(".")
     if spec.startswith("."):
@@ -152,6 +156,11 @@ def resolve_python(rel_path: str, spec: str, paths: set[str]) -> str | None:
     for cand in (target + ".py", target + ".pyi", target + "/__init__.py"):
         if cand in paths:
             return cand
+    if stems:  # 兜底：模块名 → 任意目录下的同名文件
+        last = parts[-1]
+        for cand in stems.get(last, []):
+            if cand.endswith((".py", ".pyi")):
+                return cand
     return None
 
 
@@ -195,7 +204,7 @@ def build_edges(files: dict[str, FileRec], paths: set[str], stems: dict[str, lis
     edges, seen = [], set()
     for rel, rec in files.items():
         resolvers = {
-            "python": lambda spec: resolve_python(rel, spec, paths),
+            "python": lambda spec: resolve_python(rel, spec, paths, stems),
             "javascript/typescript": lambda spec: resolve_js(rel, spec, paths, stems),
             "go": lambda spec: resolve_go(spec, paths, stems),
             "java": lambda spec: resolve_java(spec, paths),

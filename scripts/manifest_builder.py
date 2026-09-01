@@ -219,12 +219,21 @@ def merge(facts, old_manifest, sem, report) -> dict:
 
 
 def ai_judgement(project_root: Path, paths: set[str], user_ai_files: set[str],
-                 window_min: int) -> dict:
-    """is_ai_generated 三重判定（Git 状态 + 时间窗 + 用户确认，满足其二）。
+                 window_min: int, agent_files: dict | None = None) -> dict:
+    """is_ai_generated 判定（四重证据，满足其二）。
 
-    只对调用方给出的路径（new/updated/moved）评估；返回 {path: (bool, evidence[])}。
+    证据渠道：
+      1. Git 状态（新增/未追踪）—— commit 后失效
+      2. 时间窗（mtime 近 window_min 分钟）—— 最弱，人类编辑也命中
+      3. 用户确认（--ai-files）
+      4. AI 会话记录（agent_evidence：宿主会话 JSONL 审计，Agent 自动写文件，
+         跨会话依然可信；复制粘贴无法捕获，只能靠渠道 3 补充）
+
+    返回 {path: (bool, evidence[])}。
     """
     result = {}
+    agent_files = agent_files or {}
+
     git_new = set()
     try:
         r = subprocess.run(["git", "-C", str(project_root), "status", "--porcelain", "--untracked-files=all"],
@@ -248,6 +257,8 @@ def ai_judgement(project_root: Path, paths: set[str], user_ai_files: set[str],
             pass
         if p in user_ai_files:
             evidence.append("用户确认：已勾选")
+        if p in agent_files:
+            evidence.append(f"AI 会话记录：{agent_files[p]} 自动写入")
         result[p] = (len(evidence) >= 2, evidence)
     return result
 
@@ -301,6 +312,8 @@ def main(argv=None) -> int:
     ap.add_argument("--ai-files", default="", help="用户确认的 AI 生成文件（逗号分隔相对路径）")
     ap.add_argument("--time-window-min", type=int, default=None, help="时间窗分钟（默认 120，config.ai.time_window_min 覆盖）")
     ap.add_argument("--config", default=None, help="config.yaml 路径")
+    ap.add_argument("--no-agent-evidence", action="store_true",
+                    help="禁用 AI 会话日志证据通道（默认启用）")
     ap.add_argument("--report", default=None, help="校验报告 JSON 输出路径")
     args = ap.parse_args(argv)
 
@@ -338,7 +351,7 @@ def main(argv=None) -> int:
     sem = sanitize_ai_output(ai or {}, facts, report)
     final = merge(facts, old_manifest, sem, report)
 
-    # is_ai_generated 三重判定（候选：new/updated/moved = 有 old_path 或 hash 与旧 manifest 不同或不在旧清单）
+    # is_ai_generated 判定（候选：new/updated/moved = 有 old_path 或 hash 与旧 manifest 不同或不在旧清单）
     old_by_path = {n["file_path"]: n for n in (old_manifest or {}).get("nodes", []) if n.get("file_path")}
     candidates = set()
     for n in final["nodes"]:
@@ -348,7 +361,24 @@ def main(argv=None) -> int:
         if n.get("old_path") or on is None or on.get("hash") != n.get("hash"):
             candidates.add(n["file_path"])
     user_files = {p.strip().replace("\\", "/") for p in args.ai_files.split(",") if p.strip()}
-    judgement = ai_judgement(project_root, candidates, user_files, time_window)
+    # 第 4 证据通道：宿主会话日志审计（reasonix/codex/claude-code）
+    agent_files: dict = {}
+    if not args.no_agent_evidence:
+        try:
+            from agent_evidence import AgentEvidence, HOSTS
+            hosts = tuple((cfg.get("agent_evidence") or {}).get("hosts") or HOSTS)
+            ev = AgentEvidence(project_root, time_window).scan_all(hosts=hosts)
+            agent_files = ev.files
+            agent_report = ev.report()
+            agent_report["enabled"] = True
+            report["agent_evidence"] = agent_report
+            if agent_report.get("missed_write_file"):
+                report["warnings"].append(
+                    f"reasonix write_file 返回纯内容无法取路径（{agent_report['missed_write_file']} 处），"
+                    "复制粘贴/未归档会话请用 --ai-files 补充")
+        except Exception as e:  # noqa: BLE001 — 证据通道故障不阻断主流程
+            report["warnings"].append(f"AI 会话证据不可用: {e}")
+    judgement = ai_judgement(project_root, candidates, user_files, time_window, agent_files)
     for n in final["nodes"]:
         if n["file_path"] in judgement:
             flag, evidence = judgement[n["file_path"]]

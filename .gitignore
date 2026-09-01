@@ -5,6 +5,7 @@ __pycache__/
 
 # 工具产物（构建生成，不入库）
 demo/dashboard_real.html
+demo/dashboard_self.html
 *.tmp
 
 # 本地缓存/配置

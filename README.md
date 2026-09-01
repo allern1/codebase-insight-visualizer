@@ -125,7 +125,7 @@ scanner 端到端（删除/移动/新增/修改 + 根目录产物自排除）、
 ## 已知限制（诚实声明）
 
 - 正则解析存在动态 import / 注释字符串里的误检漏检；未知语言 → 文件级节点（edges 留空）
-- `is_ai_generated` 三重判定依赖 git 状态 + 时间窗 + 用户确认，**必然有不确定区间**（UI 已展示判定依据，可手动修正）
+- `is_ai_generated` 判定为**四重证据**（git 状态 / 时间窗 / 用户确认 --ai-files / AI 会话日志审计 `agent_evidence.py`），满足其二；**复制粘贴无法捕获**（生态共识，仅 --ai-files 可补）；活跃会话未归档时日志通道不可见
 - 符号行号已到类/函数粒度（非表达式级）；`symbols` 为 `[{name, line}]`，点击符号精确跳转 IDE
 - `build.py --echarts` 需要本地 echarts.min.js（运行 `npm i echarts` 或官网下载）
 

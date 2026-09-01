@@ -19,7 +19,13 @@
   "local_llm_endpoint": "",         # 例如 http://localhost:11434/v1（Ollama）；留空 = 使用编排器默认模型
 
   "ai": {
-    "time_window_min": 120          # is_ai_generated 三重判定：时间窗（分钟）
+    "time_window_min": 120          # is_ai_generated 判定：时间窗（分钟）
+  },
+
+  "agent_evidence": {
+    "hosts": ["reasonix", "codex", "claude-code"],
+    "note": "第 4 证据通道：解析宿主会话日志（Reasonix archive / Codex sessions / Claude Code projects）。
+            只统计 Agent 自动写文件；复制粘贴无法捕获（需 --ai-files 补充）。"
   },
 
   "ide": {
