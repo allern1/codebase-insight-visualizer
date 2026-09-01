@@ -16,6 +16,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -100,6 +101,26 @@ def inject_snapshots(template: str, snapshots: list[dict]) -> str:
     return template.replace("window.__MANIFEST__ =", block + "\n" + "window.__MANIFEST__ =", 1)
 
 
+def open_artifact(out_path: Path) -> str:
+    """跨平台启动默认程序打开产物；返回状态描述，不抛异常（失败不影响交付）。
+
+    借鉴 archify delivery contract：--open 仅用于交互式本地预览；
+    CI / 无人值守 / 非交互环境不应传 --open。CBVIZ_NO_OPEN=1 可强制抑制（测试用）。"""
+    import os
+    if os.environ.get("CBVIZ_NO_OPEN") == "1":
+        return "skipped (CBVIZ_NO_OPEN)"
+    try:
+        if sys.platform.startswith("win"):
+            os.startfile(str(out_path))  # noqa: S606
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(out_path)])
+        else:
+            subprocess.Popen(["xdg-open", str(out_path)])
+        return "ok"
+    except Exception as e:  # noqa: BLE001
+        return f"failed ({e})"
+
+
 def deliver(out_path: Path, payload: str, report: dict) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=str(out_path.parent), suffix=".tmp")
@@ -123,6 +144,8 @@ def main(argv=None) -> int:
     ap.add_argument("--out", required=True, help="输出 dashboard HTML 路径")
     ap.add_argument("--echarts", default=None, help="本地 echarts.min.js（--bundle 等价，内联）")
     ap.add_argument("--snapshots-dir", default=None, help="快照目录（inject window.__SNAPSHOTS__ 差异元数据）")
+    ap.add_argument("--open", action="store_true",
+                    help="交付成功后启动默认程序打开产物（仅交互式预览；CI/无人值守勿用）")
     ap.add_argument("--report", default=None, help="构建报告 JSON 输出路径")
     args = ap.parse_args(argv)
 
@@ -161,10 +184,13 @@ def main(argv=None) -> int:
         report["manifest_edges"] = len(manifest.get("edges", []))
         report["out_bytes"] = Path(out_path).stat().st_size
         report["ok"] = True
+        if args.open:
+            report["open"] = open_artifact(out_path)
         print(f"✔ 构建完成: {out_path}  ({report['out_bytes'] / 1024:.0f} KB)"
               f"  节点 {report['manifest_nodes']}  边 {report['manifest_edges']}"
               + (f"  快照 {report['snapshots']}" if report["snapshots"] else "")
-              + ("  [ECharts 已内联]" if args.echarts else ""))
+              + ("  [ECharts 已内联]" if args.echarts else "")
+              + ("  [已打开]" if report.get("open") == "ok" else ""))
     except Exception as e:  # noqa: BLE001 — 构建失败保留旧产物
         report["errors"].append(str(e))
         print(f"✘ 构建失败，保留上一版输出: {e}", file=sys.stderr)

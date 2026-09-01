@@ -48,10 +48,11 @@ SKILL_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"   # if run from a she
 
    ```bash
    python "$SKILL_ROOT/scripts/build.py" --manifest <final_manifest.json> \
-     --out dashboard.html [--snapshots-dir <cache>/snapshots] [--echarts <local echarts.min.js>]
+     --out dashboard.html [--snapshots-dir <cache>/snapshots] [--echarts <local echarts.min.js>] \
+     [--open]
    ```
 
-   `--snapshots-dir` injects the time-machine diff; `--echarts` inlines ECharts for intranet/offline delivery. Commands are zero-dependency Python (3.11+); templates ship in `demo/`.
+   `--snapshots-dir` injects the time-machine diff; `--echarts` inlines ECharts for intranet/offline delivery. **Use `--open` in interactive sessions** so the browser opens the artifact immediately after delivery (archify contract: never in CI / unattended runs; opening failure never fails the build). Commands are zero-dependency Python (3.11+); templates ship in `demo/`.
 
 ## Iron rules
 

@@ -102,6 +102,21 @@ class TestBuild(unittest.TestCase):
         self.assertIsNone(re.search(r"window\.__SNAPSHOTS__\s*=\s*\[", html2),
                           "无快照时不应注入赋值块（模板中的读取引用不算）")
 
+    def test_open_flag_skips_with_env_guard(self):
+        """--open 在 CBVIZ_NO_OPEN=1 时跳过（不弹浏览器），交付仍成功。"""
+        import os
+        os.environ["CBVIZ_NO_OPEN"] = "1"
+        try:
+            rc = main(["--manifest", str(self.manifest), "--out", str(self.out), "--open",
+                       "--report", str(self.root / "open_report.json")])
+        finally:
+            os.environ.pop("CBVIZ_NO_OPEN", None)
+        self.assertEqual(rc, 0)
+        report = json.loads((self.root / "open_report.json").read_text(encoding="utf-8"))
+        self.assertTrue(report["delivered"])
+        self.assertTrue(str(report["open"]).startswith("skipped"),
+                        f"抑制时应跳过打开: {report.get('open')}")
+
 
 if __name__ == "__main__":
     unittest.main()
